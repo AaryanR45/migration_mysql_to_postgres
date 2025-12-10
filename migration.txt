@@ -1,0 +1,129 @@
+MySQL to PostgreSQL Migration Guide (Using SQL Dump)
+
+This document explains how to migrate a database from MySQL to PostgreSQL
+on Windows using the SQL dump method. This method works well when pgloader
+is not available or not supported natively on Windows.
+
+STEP 1: Export (Dump) the MySQL Database
+
+1. Open Command Prompt:
+   Press: Win + R → type "cmd" → press Enter
+
+2. Run the MySQL dump command:
+
+   mysqldump -u root -p ordermgmt > ordermgmt.sql
+
+3. Enter your MySQL password when prompted.
+
+4. This creates a file named:
+   ordermgmt.sql
+
+5. Verify the file exists:
+
+   dir ordermgmt.sql
+
+STEP 2: Clean and Convert MySQL SQL to PostgreSQL SQL
+
+MySQL and PostgreSQL use different SQL syntax, so the dump file must be edited.
+
+Open "ordermgmt.sql" in a text editor like:
+- VS Code
+- Notepad++
+
+Now apply these conversions:
+
+Replace:
+
+AUTO_INCREMENT  → SERIAL
+ENGINE=InnoDB   → (remove completely)
+Backticks `     → Double quotes "
+TINYINT(1)      → BOOLEAN
+INT(11)         → INTEGER
+
+Remove MySQL-only commands such as:
+
+SET SQL_MODE...
+SET time_zone...
+/*!40101 SET... */
+
+These lines are not compatible with PostgreSQL.
+
+STEP 3: Create a PostgreSQL-Compatible SQL File
+
+Create a new file named:
+
+ordermgmt_pg.sql
+
+Paste the cleaned and converted SQL into this file.
+
+This file now contains PostgreSQL-compatible table structures and data.
+
+STEP 4: Create the PostgreSQL Database
+
+1. Open:
+   SQL Shell (psql)
+
+2. Login details:
+   Server: localhost
+   Database: postgres
+   Port: 5432
+   Username: postgres
+   Password: (your PostgreSQL password)
+
+3. Run this SQL command:
+
+   CREATE DATABASE ordermgmt;
+
+4. Exit psql:
+
+   \q
+
+STEP 5: Import the Converted SQL into PostgreSQL
+
+Open Command Prompt in the folder where your file exists.
+
+Run:
+
+   psql -U postgres -d ordermgmt -f ordermgmt_pg.sql
+
+Enter your PostgreSQL password when asked.
+
+STEP 6: Verify the Migration
+
+Login to the migrated database:
+
+   psql -U postgres -d ordermgmt
+
+List tables:
+
+   \dt
+
+View data:
+
+   SELECT * FROM customers;
+   SELECT * FROM orders;
+   SELECT * FROM shippers;
+
+STEP 7: Fix Sequence Issues
+
+To make sure auto-increment IDs work properly, run:
+
+   SELECT setval('customers_customerid_seq',
+                 (SELECT MAX(customerid) FROM customers));
+
+   SELECT setval('shippers_shipperid_seq',
+                 (SELECT MAX(shipperid) FROM shippers));
+
+   SELECT setval('orders_orderid_seq',
+                 (SELECT MAX(orderid) FROM orders));
+
+Summary
+
+This migration process includes:
+1. Dumping the MySQL database
+2. Cleaning MySQL-specific SQL syntax
+3. Creating PostgreSQL-compatible schema
+4. Importing into PostgreSQL
+5. Verifying data and tables
+
+
